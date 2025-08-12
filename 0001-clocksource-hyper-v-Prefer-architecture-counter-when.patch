@@ -1,6 +1,6 @@
-From 271a5d10f500f6db0deb6f54cdc58ffab662507f Mon Sep 17 00:00:00 2001
+From 82541b121a9b439830585fbb43598a619c5285e9 Mon Sep 17 00:00:00 2001
 From: Wei Liu <wei.liu@kernel.org>
-Date: Thu, 31 Jul 2025 04:48:39 +0000
+Date: Tue, 12 Aug 2025 18:20:42 +0000
 Subject: [PATCH] clocksource: hyper-v: Prefer architecture counter when
  running as root partition
 
@@ -20,12 +20,12 @@ Signed-off-by: Wei Liu <wei.liu@kernel.org>
  2 files changed, 19 insertions(+), 2 deletions(-)
 
 diff --git a/arch/x86/kernel/cpu/mshyperv.c b/arch/x86/kernel/cpu/mshyperv.c
-index a39f28530341..2bedcbe0ea4c 100644
+index c78f860419d6..25773af116bc 100644
 --- a/arch/x86/kernel/cpu/mshyperv.c
 +++ b/arch/x86/kernel/cpu/mshyperv.c
-@@ -1042,6 +1042,11 @@ static void __init ms_hyperv_init_platform(void)
- 	if (!hv_root_partition())
- 		machine_ops.crash_shutdown = hv_guest_crash_shutdown;
+@@ -565,6 +565,11 @@ static void __init ms_hyperv_init_platform(void)
+ 	machine_ops.crash_shutdown = hv_machine_crash_shutdown;
+ #endif
  #endif
 +	/*
 +	 * HV_ACCESS_TSC_INVARIANT is always zero for the root partition. Root
@@ -35,7 +35,7 @@ index a39f28530341..2bedcbe0ea4c 100644
  	if (ms_hyperv.features & HV_ACCESS_TSC_INVARIANT) {
  		/*
  		 * Writing to synthetic MSR 0x40000118 updates/changes the
-@@ -1133,8 +1138,12 @@ static void __init ms_hyperv_init_platform(void)
+@@ -636,8 +641,12 @@ static void __init ms_hyperv_init_platform(void)
  	 * TSC should be marked as unstable only after Hyper-V
  	 * clocksource has been initialized. This ensures that the
  	 * stability of the sched_clock is not altered.
@@ -50,10 +50,10 @@ index a39f28530341..2bedcbe0ea4c 100644
  
  	hardlockup_detector_disable();
 diff --git a/drivers/clocksource/hyperv_timer.c b/drivers/clocksource/hyperv_timer.c
-index f6415e726e96..59c3e09f1961 100644
+index 2edc13ca184e..ca39044a4a60 100644
 --- a/drivers/clocksource/hyperv_timer.c
 +++ b/drivers/clocksource/hyperv_timer.c
-@@ -534,14 +534,22 @@ static void __init hv_init_tsc_clocksource(void)
+@@ -549,14 +549,22 @@ static void __init hv_init_tsc_clocksource(void)
  	union hv_reference_tsc_msr tsc_msr;
  
  	/*
@@ -68,8 +68,8 @@ index f6415e726e96..59c3e09f1961 100644
 +	 *
 +	 * When running as the root partition:
 +	 *
-+	 * There is no HV_ACCESS_TSC_INVARIANT feature. Always prefer the
-+	 * architectural defined counter over the Hyper-V Reference TSC.
++	 * There is no HV_ACCESS_TSC_INVARIANT feature. Skip the unnecessary
++	 * check.
  	 */
 -	if (ms_hyperv.features & HV_ACCESS_TSC_INVARIANT) {
 +	if ((ms_hyperv.features & HV_ACCESS_TSC_INVARIANT) ||
